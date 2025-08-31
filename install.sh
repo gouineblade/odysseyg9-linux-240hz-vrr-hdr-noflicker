@@ -10,12 +10,40 @@ ask_execution() {
     fi
 }
 
+# Check what distro we're in
+if command -v mkinitcpio &> /dev/null; then
+    echo "Arch Linux based distribution detected."
+    ARCHBTW=1
+    GRUBCONFIG="$(grub-mkconfig)"
+    MKINITRAMFS="$(mkinitcpio -P)"
+    INITRAMFSCFG="/etc/mkinitcpio.conf"
+else
+    if command -v update-initramfs &> /dev/null; then
+        echo "Debian based distribution detected."
+        DEBIAN=1
+        GRUBCONFIG="$(grub-mkconfig)"
+        MKINITRAMFS="$(update-initramfs -u)"
+        INITRAMFSCFG="/etc/mkinitcpio.conf"
+    else
+        if command -v dracut &> /dev/null; then
+            echo "Fedora based distribution detected."
+            FEDORA=1
+            GRUBCONFIG="$(grub2-mkconfig)"
+            MKINITRAMFS="$(dracut --regenerate-all --force)"
+            INITRAMFSCFG="/etc/dracut.conf.d/l49g59.conf"
+        else
+            echo "Could not determine your Linux distribution."
+            exit 2
+        fi
+    fi
+fi
+
 # Check for grub-mkconfig
-if ! command -v grub-mkconfig &> /dev/null; then
-    echo "❌ grub-mkconfig not found in \$PATH. Install wizard aborted."
+if ! command -v ${GRUBCONFIG} &> /dev/null; then
+    echo "❌ grub-mkconfig or grub2-mkconfig not found in \$PATH. Install wizard aborted."
     exit 2
 else
-    echo "✅ grub-mkconfig found! Proceeding..."
+    echo "✅ grub-mkconfig or grub2-mkconfig found! Proceeding..."
 fi
 
 # Check for sshd
