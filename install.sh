@@ -14,21 +14,21 @@ ask_execution() {
 if command -v mkinitcpio &> /dev/null; then
     echo "Arch Linux based distribution detected."
     ARCHBTW=1
-    GRUBCONFIG="$(grub-mkconfig)"
+    GRUBCONFIG="$(grub-mkconfig -o /boot/grub/grub.cfg)"
     MKINITRAMFS="$(mkinitcpio -P)"
     INITRAMFSCFG="/etc/mkinitcpio.conf"
 else
     if command -v update-initramfs &> /dev/null; then
         echo "Debian based distribution detected."
         DEBIAN=1
-        GRUBCONFIG="$(grub-mkconfig)"
+        GRUBCONFIG="$(grub-mkconfig -o /boot/grub/grub.cfg)"
         MKINITRAMFS="$(update-initramfs -u)"
         INITRAMFSCFG="/etc/mkinitcpio.conf"
     else
         if command -v dracut &> /dev/null; then
             echo "Fedora based distribution detected."
             FEDORA=1
-            GRUBCONFIG="$(grub2-mkconfig)"
+            GRUBCONFIG="$(grub2-mkconfig -o /boot/grub2/grub.cfg)"
             MKINITRAMFS="$(dracut --regenerate-all --force)"
             INITRAMFSCFG="/etc/dracut.conf.d/l49g59.conf"
         else
@@ -122,17 +122,25 @@ done
 prepare_environment() {
     mkdir -p backup
     mkdir -p tmp
-    cp /etc/mkinitcpio.conf backup/mkinitcpio.conf
-    cp /etc/mkinitcpio.conf tmp/mkinitcpio.conf
-    cp /etc/default/grub backup/grub
-    cp /etc/default/grub tmp/grub
+    cp $INITRAMFSCFG backup/
+    cp $INITRAMFSCFG tmp/
+    cp /etc/default/grub backup/
+    cp /etc/default/grub tmp/
 
     ask_execution sudo cp edids/$EDID /usr/lib/firmware/edid/$EDID
 
-    if grep -q "usr/lib/firmware/edid" tmp/mkinitcpio.conf; then
-        sed -i -E "s|usr/lib/firmware/edid/[^ ]+\.bin|usr/lib/firmware/edid/$EDID|g" tmp/mkinitcpio.conf
+    if $ARCHBTW=1 || $DEBIAN=1; then
+        CONF=mkinitcpio.conf
     else
-        sed -i -E "/^FILES=\(/ s|^FILES=\(([^)]*)\)|FILES=(\1 /usr/lib/firmware/edid/$EDID)|" tmp/mkinitcpio.conf
+        if $FEDORA=1; then
+            CONF=l49g59.conf
+        fi
+    fi
+    
+    if grep -q "usr/lib/firmware/edid" tmp/$CONF; then
+        sed -i -E "s|usr/lib/firmware/edid/[^ ]+\.bin|usr/lib/firmware/edid/$EDID|g" tmp/$CONF
+    else
+        sed -i -E "/^FILES=\(/ s|^FILES=\(([^)]*)\)|FILES=(\1 /usr/lib/firmware/edid/$EDID)|" tmp/$CONF
     fi
 
 
@@ -146,7 +154,7 @@ prepare_environment() {
     fi
 
     echo "🔍 Comparing original mkinitcpio.conf with the updated version:"
-    diff /etc/mkinitcpio.conf tmp/mkinitcpio.conf || echo "No changes"
+    diff $INITRAMFSCFG tmp/$CONF || echo "No changes"
     printf "\n"
     echo "🔍 Comparing original GRUB config with the updated version:" || echo "No changes"
     diff /etc/default/grub tmp/grub
@@ -154,10 +162,10 @@ prepare_environment() {
 }
 
 apply_changes() {
-    ask_execution sudo cp tmp/mkinitcpio.conf /etc/mkinitcpio.conf
-    ask_execution sudo mkinitcpio -P
+    ask_execution sudo cp tmp/$CONF $INITRAMFSCFG
+    ask_execution sudo ${MKINITRAMFS}
     ask_execution sudo cp tmp/grub /etc/default/grub
-    ask_execution sudo grub-mkconfig -o /boot/grub/grub.cfg
+    ask_execution sudo ${GRUBCONFIG}
     echo "✅ All done! You can now safely reboot your system to apply the changes."
 }
 
