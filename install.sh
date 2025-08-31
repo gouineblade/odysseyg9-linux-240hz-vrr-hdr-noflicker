@@ -11,26 +11,26 @@ ask_execution() {
 }
 
 # Check what distro we're in
-if command -v mkinitcpio &> /dev/null; then
+if command -v mkinitcpio -V &> /dev/null; then
     echo "Arch Linux based distribution detected."
     ARCHBTW=1
-    GRUBCONFIG="$(grub-mkconfig -o /boot/grub/grub.cfg)"
-    MKINITRAMFS="$(mkinitcpio -P)"
+    GRUB=grub
+    MKINITRAMFS="mkinitcpio -P"
     INITRAMFSCFG="/etc/mkinitcpio.conf"
 else
-    if command -v update-initramfs &> /dev/null; then
+    if command -v update-initramfs -h &> /dev/null; then
         echo "Debian based distribution detected."
         DEBIAN=1
-        GRUBCONFIG="$(grub-mkconfig -o /boot/grub/grub.cfg)"
-        MKINITRAMFS="$(update-initramfs -u)"
+        GRUB=grub
+        MKINITRAMFS="update-initramfs -u"
         INITRAMFSCFG="/etc/mkinitcpio.conf"
     else
-        if command -v dracut &> /dev/null; then
+        if command -v dracut --version &> /dev/null; then
             echo "Fedora based distribution detected."
             FEDORA=1
-            GRUBCONFIG="$(grub2-mkconfig -o /boot/grub2/grub.cfg)"
-            MKINITRAMFS="$(dracut --regenerate-all --force)"
-            INITRAMFSCFG="/etc/dracut.conf.d/l49g59.conf"
+            GRUB=grub2
+            MKINITRAMFS="dracut --regenerate-all --force"
+            INITRAMFSCFG="/etc/dracut.conf.d/lc49g59.conf"
         else
             echo "Could not determine your Linux distribution."
             exit 2
@@ -39,7 +39,7 @@ else
 fi
 
 # Check for grub-mkconfig
-if ! command -v ${GRUBCONFIG} &> /dev/null; then
+if ! command -v $GRUB-mkconfig &> /dev/null; then
     echo "❌ grub-mkconfig or grub2-mkconfig not found in \$PATH. Install wizard aborted."
     exit 2
 else
@@ -129,11 +129,11 @@ prepare_environment() {
 
     ask_execution sudo cp edids/$EDID /usr/lib/firmware/edid/$EDID
 
-    if $ARCHBTW=1 || $DEBIAN=1; then
+    if [ $ARCHBTW -eq 1 ] || [ $DEBIAN -eq 1 ]; then
         CONF=mkinitcpio.conf
     else
-        if $FEDORA=1; then
-            CONF=l49g59.conf
+        if [ $FEDORA -eq 1 ]; then
+            CONF=lc49g59.conf
         fi
     fi
     
@@ -165,7 +165,7 @@ apply_changes() {
     ask_execution sudo cp tmp/$CONF $INITRAMFSCFG
     ask_execution sudo ${MKINITRAMFS}
     ask_execution sudo cp tmp/grub /etc/default/grub
-    ask_execution sudo ${GRUBCONFIG}
+    ask_execution sudo $GRUB-mkconfig -o /boot/$GRUB/grub.cfg
     echo "✅ All done! You can now safely reboot your system to apply the changes."
 }
 
