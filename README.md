@@ -32,7 +32,7 @@ Before proceeding, it is highly recommended to **set up SSH access** to your mac
 
 ---
 
-## Automated installation
+## Automated installation (Arch based distributions)
 
 Just type the following
 ```bash

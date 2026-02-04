@@ -112,7 +112,7 @@ prepare_environment() {
     if [[ -z "$output" ]]; then
         echo "No changes"
     else
-        echo "$output"  # Affiche les différences
+        echo "$output"
     fi
         printf "\n"
 }
