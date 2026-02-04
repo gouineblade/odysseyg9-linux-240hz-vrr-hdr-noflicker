@@ -1,5 +1,7 @@
 # Samsung Odyssey G9 on Linux - 240Hz, VRR & HDR Without Flicker or Ghosting
 
+![visitors](https://visitor-badge.laobi.icu/badge?page_id=pgouineblade.odysseyg9-linux-240hz-vrr-hdr-noflicker)
+
 Tested on Arch Linux with KDE, but should work on other distros as well.
 
 ## About this Project
