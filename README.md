@@ -30,31 +30,53 @@ Before proceeding, it is highly recommended to **set up SSH access** to your mac
 
 ---
 
-## Manual Installation Guide
+## Automated installation
 
-### 1. Adding the EDID file to initramfs
+Just type the following
+```bash
+git clone https://github.com/vpraion/odysseyg9-linux-240hz-vrr-hdr-noflicker.git
+cd odysseyg9-linux-240hz-vrr-hdr-noflicker
+chmod +x install.sh
+./install.sh
+```
 
-Copy the provided EDID file to the firmware directory:
+## Manual installation guide
+
+### 1. Prepare any backup
+
+This step should only be executed once
+```bash
+mkdir backup
+sudo cp /etc/mkinitcpio.conf backup/
+sudo cp /etc/default/grub backup/
+```
+
+### 2. Adding the EDID file to initramfs
+
+Copy the provided EDID file to the firmware directory
 ```bash
 sudo cp edids/LC49G95.bin /usr/lib/firmware/edid/LC49G95.bin
 ```
 
 Edit your initramfs configuration:
 ```bash
+# option 1 if your system handles conf.d/*
+sudo sh -c "echo 'FILES+=(/usr/lib/firmware/edid/$EDID)' > /etc/mkinitcpio.conf.d/99-edid.conf"
+# option 2
 sudo nano /etc/mkinitcpio.conf
 ```
-
-Add the EDID path to the `FILES` array:
-```bash
-FILES=(/usr/lib/firmware/edid/LC49G95.bin)
-```
+- If you're following option 2 : Add the EDID path to the `FILES` array:
+    ```bash
+    # option 2 (add /usr/lib/firmware/edid/LC49G95.bin in the parentheses, don't erase their content if they had any)
+    FILES=(/usr/lib/firmware/edid/LC49G95.bin)
+    ```
 
 Then regenerate the initramfs:
 ```bash
 sudo mkinitcpio -P
 ```
 
-### 2. Adding the EDID to Linux kernel parameters
+### 3. Adding the EDID to Linux kernel parameters
 
 If you are using GRUB, edit:
 ```bash
@@ -80,9 +102,9 @@ For other bootloaders, adapt this parameter accordingly.
 
 ---
 
-### 3. Optional: Updating the Monitor Firmware
+### 4. Optional: Updating the Monitor Firmware
 
-If your monitor's firmware is outdated, download it here:  
+If your monitor's firmware is outdated, download it here:
 [Samsung LC49G95 Firmware](https://www.samsung.com/fr/support/model/LC49G95TSSUXEN/#downloads)
 
 Follow Samsung’s instructions to flash it using a FAT-formatted USB drive.
@@ -93,14 +115,11 @@ Follow Samsung’s instructions to flash it using a FAT-formatted USB drive.
 
 If the display breaks after reboot:
 1. **SSH into your system**, or use a recovery medium with chroot.
-2. Edit `/etc/mkinitcpio.conf` to remove the EDID from the `FILES` array.
-3. Rebuild initramfs:
-```bash
-sudo mkinitcpio -P
-```
-4. Remove the `drm.edid_firmware=...` from your bootloader’s kernel parameters.
-5. Rebuild the bootloader config (for GRUB: `sudo grub-mkconfig -o /boot/grub/grub.cfg`).
-6. Reboot.
+2. Go back to the repository directory
+3. `sudo cp backup/grub /etc/default/grub && sudo cp backup/mkinitcpio.conf /etc/mkinictipo.conf && sudo rm /etc/mkinitcpio.conf.d/99-edid.conf`
+1. Rebuild initramfs `sudo mkinitcpio -P`
+2. Rebuild the bootloader config (for GRUB: `sudo grub-mkconfig -o /boot/grub/grub.cfg`).
+3. Reboot.
 
 ---
 
@@ -112,8 +131,8 @@ After testing EDID dumps between OSes, I crafted a compatible EDID that restores
 
 Most GUI EDID editors failed because the G9's EDID is unconventional, so this was mostly handcrafted.
 
-🚀 Everything now works flawlessly on Linux!
+Everything now works flawlessly on Linux!
 
 ---
 
-For the automated installation process, check out the `install.sh` script provided in this repository. 🎉
+For the automated installation process, check out the `install.sh` script provided in this repository.

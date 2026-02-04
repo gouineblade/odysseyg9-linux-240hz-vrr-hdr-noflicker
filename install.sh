@@ -68,7 +68,7 @@ if [[ ${#DP_PORTS[@]} -eq 0 ]]; then
 fi
 
 # Prompt user to select DP output
-echo "🎯 Select the DisplayPort output connected to your monitor:"
+echo "🖥️ Select the DisplayPort output connected to your monitor:"
 PS3="Please enter your choice number: "
 
 select DP_PORT in "${DP_PORTS[@]}"; do
@@ -80,7 +80,7 @@ select DP_PORT in "${DP_PORTS[@]}"; do
     fi
 done
 
-echo "🖥️ Select the EDID file corresponding to your monitor:"
+echo "📁 Select the EDID file corresponding to your monitor:"
 
 select EDID in "$(ls edids)"; do
     if [[ -n "$EDID" ]]; then
@@ -94,39 +94,31 @@ done
 prepare_environment() {
     mkdir -p backup
     mkdir -p tmp
-    cp /etc/mkinitcpio.conf backup/mkinitcpio.conf
-    cp /etc/mkinitcpio.conf tmp/mkinitcpio.conf
     cp /etc/default/grub backup/grub
     cp /etc/default/grub tmp/grub
 
-    ask_execution sudo cp edids/$EDID /usr/lib/firmware/edid/$EDID
-
-    if grep -q "usr/lib/firmware/edid" tmp/mkinitcpio.conf; then
-        sed -i -E "s|usr/lib/firmware/edid/[^ ]+\.bin|usr/lib/firmware/edid/$EDID|g" tmp/mkinitcpio.conf
-    else
-        sed -i -E "/^FILES=\(/ s|^FILES=\(([^)]*)\)|FILES=(\1 /usr/lib/firmware/edid/$EDID)|" tmp/mkinitcpio.conf
-    fi
-
+    ask_execution sudo mkdir -p /usr/lib/firmware/edid && sudo cp edids/$EDID /usr/lib/firmware/edid/$EDID
 
     EDID_PARAM="drm.edid_firmware=$DP_PORT:edid/$EDID"
 
-    if grep -q "drm.edid_firmware=" tmp/grub; then
-        sed -i "s|drm\.edid_firmware=[^ ]*|$EDID_PARAM|" tmp/grub
-    else
-        sed -i '/^GRUB_CMDLINE_LINUX_DEFAULT=/ { /"/! s/=\(.*\)$/="\1"/ }' tmp/grub # Adds quotes if they don't exist
-        sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/s/\"/ $EDID_PARAM\"/" tmp/grub
-    fi
+    # removes any existing drm.edid_firmware parameter from GRUB_CMDLINE_LINUX_DEFAULT and appends a new one defined by the variable $EDID_PARAM
+    sudo sed -i -E \
+    "s@(GRUB_CMDLINE_LINUX_DEFAULT=\"[^\"]*) drm\.edid_firmware=[^ ]*@\1@g; \
+    s@(GRUB_CMDLINE_LINUX_DEFAULT=\"[^\"]*)\"@\1 $EDID_PARAM\"@" \
+    tmp/grub
 
-    echo "🔍 Comparing original mkinitcpio.conf with the updated version:"
-    diff /etc/mkinitcpio.conf tmp/mkinitcpio.conf || echo "No changes"
-    printf "\n"
-    echo "🔍 Comparing original GRUB config with the updated version:" || echo "No changes"
-    diff /etc/default/grub tmp/grub
-    printf "\n"
+    echo "🔍 Comparing original GRUB config with the updated version:"
+    output=$(diff /etc/default/grub tmp/grub)
+    if [[ -z "$output" ]]; then
+        echo "No changes"
+    else
+        echo "$output"  # Affiche les différences
+    fi
+        printf "\n"
 }
 
 apply_changes() {
-    ask_execution sudo cp tmp/mkinitcpio.conf /etc/mkinitcpio.conf
+    ask_execution sudo sh -c "echo 'FILES+=(/usr/lib/firmware/edid/$EDID)' > /etc/mkinitcpio.conf.d/99-edid.conf"
     ask_execution sudo mkinitcpio -P
     ask_execution sudo cp tmp/grub /etc/default/grub
     ask_execution sudo grub-mkconfig -o /boot/grub/grub.cfg
